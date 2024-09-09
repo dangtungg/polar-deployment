@@ -1,5 +1,17 @@
 services:
-  # Applications
+  #################### Applications ####################
+  config-service:
+    image: "ghcr.io/dangtungg/config-service"
+    container_name: "config-service"
+    ports:
+      - 8888:8888
+      - 9888:9888
+    environment:
+      # Buildpacks environment variable to configure the number of threads in memory calculation
+      - BPL_JVM_THREAD_COUNT=50
+      # Buildpacks environment variable to enable debug through a socket on port 9888
+      - BPL_DEBUG_ENABLED=true
+      - BPL_DEBUG_PORT=9888
 
   catalog-service:
     depends_on:
@@ -17,11 +29,13 @@ services:
       - BPL_DEBUG_ENABLED=true
       - BPL_DEBUG_PORT=8001
       - SPRING_CLOUD_CONFIG_URI=http://config-service:8888
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://polar-postgres:5432/my_sample_db
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://polar-postgres:5432/polardb_catalog
+      - SPRING_PROFILES_ACTIVE=testdata
 
   order-service:
     depends_on:
       - polar-postgres
+      - config-service
     image: "ghcr.io/dangtungg/order-service"
     container_name: "order-service"
     ports:
@@ -36,34 +50,47 @@ services:
       - SPRING_R2DBC_URL=r2dbc:postgresql://polar-postgres:5432/polardb_order
       - SPRING_FLYWAY_URL=jdbc:postgresql://polar-postgres:5432/polardb_order
 
-  config-service:
-    image: "ghcr.io/dangtungg/config-service"
-    container_name: "config-service"
+  edge-service:
+    depends_on:
+      - polar-redis
+      - config-service
+    image: "ghcr.io/dangtungg/edge-service"
+    container_name: "edge-service"
     ports:
-      - 8888:8888
-      - 9888:9888
+      - 9009:9009
+      - 8000:8000
     environment:
-      # Buildpacks environment variable to configure the number of threads in memory calculation
-      - BPL_JVM_THREAD_COUNT=50
-      # Buildpacks environment variable to enable debug through a socket on port 9888
+      # Buildpacks environment variable to enable debug through a socket on port 8000
       - BPL_DEBUG_ENABLED=true
-      - BPL_DEBUG_PORT=9888
+      - BPL_DEBUG_PORT=8000
+      - CATALOG_SERVICE_URL=http://catalog-service:9001
+      - ORDER_SERVICE_URL=http://order-service:9002
+      - SPRING_CLOUD_CONFIG_URI=http://config-service:8888
+      - SPRING_DATA_REDIS_HOST=polar-redis
 
-  # Backing Services
-
+  #################### Backing Services ####################
   polar-postgres:
-    image: "postgres:latest"
-    container_name: "polar-postgres"
+    image: postgres:latest
+    container_name: polar-postgres
     restart: always
     ports:
       - 5432:5432
     environment:
       - POSTGRES_USER=admin
       - POSTGRES_PASSWORD=123456
-      - POSTGRES_DB=my_sample_db
     volumes:
-      - postgres-vol:/var/lib/postgresql/data
+      - polar-postgres-vol:/var/lib/postgresql/data
+      - ./postgresql/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  polar-redis:
+    image: redis:latest
+    container_name: polar-redis
+    restart: always
+    ports:
+      - 6379:6379
+    volumes:
+      - polar-redis-vol:/data
 
 volumes:
-  postgres-vol:
-    external: true
+  polar-postgres-vol:
+  polar-redis-vol:
