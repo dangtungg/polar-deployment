@@ -35,6 +35,7 @@ services:
   order-service:
     depends_on:
       - polar-postgres
+      - polar-rabbitmq
       - config-service
     image: "ghcr.io/dangtungg/order-service"
     container_name: "order-service"
@@ -49,6 +50,7 @@ services:
       - SPRING_CLOUD_CONFIG_URI=http://config-service:8888
       - SPRING_R2DBC_URL=r2dbc:postgresql://polar-postgres:5432/polardb_order
       - SPRING_FLYWAY_URL=jdbc:postgresql://polar-postgres:5432/polardb_order
+      - SPRING_RABBITMQ_HOST=polar-rabbitmq
 
   edge-service:
     depends_on:
@@ -67,6 +69,22 @@ services:
       - ORDER_SERVICE_URL=http://order-service:9002
       - SPRING_CLOUD_CONFIG_URI=http://config-service:8888
       - SPRING_DATA_REDIS_HOST=polar-redis
+
+  dispatcher-service:
+    depends_on:
+      - polar-rabbitmq
+      - config-service
+    image: "ghcr.io/dangtungg/dispatcher-service"
+    container_name: dispatcher-service
+    ports:
+      - 9003:9003
+      - 8003:8003
+    environment:
+      # Buildpacks environment variable to enable debug through a socket on port 8002
+      - BPL_DEBUG_ENABLED=true
+      - BPL_DEBUG_PORT=8003
+      - SPRING_CLOUD_CONFIG_URI=http://config-service:8888
+      - SPRING_RABBITMQ_HOST=polar-rabbitmq
 
   #################### Backing Services ####################
   polar-postgres:
@@ -91,6 +109,17 @@ services:
     volumes:
       - polar-redis-vol:/data
 
+  polar-rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: polar-rabbitmq
+    ports:
+      - 5672:5672
+      - 15672:15672
+    volumes:
+      - polar-rabbitmq-vol:/var/lib/rabbitmq
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+
 volumes:
   polar-postgres-vol:
   polar-redis-vol:
+  polar-rabbitmq-vol:
