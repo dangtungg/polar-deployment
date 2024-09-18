@@ -1,0 +1,32 @@
+apiVersion: apps/v1  
+kind: Deployment  
+metadata:  
+  name: polar-rabbitmq  
+spec:  
+  replicas: 1  
+  selector:  
+    matchLabels:  
+      app: polar-rabbitmq  
+  template:  
+    metadata:  
+      labels:  
+        app: polar-rabbitmq  
+    spec:  
+      containers:  
+      - name: rabbitmq  
+        image: rabbitmq:3.13-management
+        ports:  
+        - containerPort: 5672  
+        - containerPort: 15672  
+        volumeMounts:  
+        - name: config  
+          mountPath: /etc/rabbitmq  
+        - name: data  
+          mountPath: /var/lib/rabbitmq  
+      volumes:  
+      - name: config  
+        configMap:  
+          name: polar-rabbitmq-config  
+      - name: data  
+        persistentVolumeClaim:  
+          claimName: polar-rabbitmq-data
