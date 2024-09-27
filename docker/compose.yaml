@@ -56,6 +56,8 @@ services:
     depends_on:
       - polar-redis
       - config-service
+      - polar-keycloak
+      - polar-ui
     image: "ghcr.io/dangtungg/edge-service"
     container_name: "edge-service"
     ports:
@@ -67,8 +69,10 @@ services:
       - BPL_DEBUG_PORT=8000
       - CATALOG_SERVICE_URL=http://catalog-service:9001
       - ORDER_SERVICE_URL=http://order-service:9002
+      - SPA_URL=http://polar-ui:9004
       - SPRING_CLOUD_CONFIG_URI=http://config-service:8888
       - SPRING_DATA_REDIS_HOST=polar-redis
+      - SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUER_URI=http://host.docker.internal:8080/realms/PolarBookshop
 
   dispatcher-service:
     depends_on:
@@ -86,11 +90,18 @@ services:
       - SPRING_CLOUD_CONFIG_URI=http://config-service:8888
       - SPRING_RABBITMQ_HOST=polar-rabbitmq
 
+  polar-ui:
+    image: "ghcr.io/polarbookshop/polar-ui:v1"
+    container_name: polar-ui
+    ports:
+      - 9004:9004
+    environment:
+      - PORT=9004
+
   #################### Backing Services ####################
   polar-postgres:
     image: postgres:latest
     container_name: polar-postgres
-    restart: always
     ports:
       - 5432:5432
     environment:
@@ -103,7 +114,6 @@ services:
   polar-redis:
     image: redis:latest
     container_name: polar-redis
-    restart: always
     ports:
       - 6379:6379
     volumes:
@@ -118,6 +128,18 @@ services:
     volumes:
       - polar-rabbitmq-vol:/var/lib/rabbitmq
       - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+
+  polar-keycloak:
+    image: quay.io/keycloak/keycloak:25.0.5
+    container_name: polar-keycloak
+    command: start-dev --import-realm
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=123456
+    ports:
+      - 8080:8080
 
 volumes:
   polar-postgres-vol:

@@ -23,20 +23,3 @@ spec:
             limits:
               cpu: 200m
               memory: 100Mi
-
----
-
-apiVersion: v1
-kind: Service
-metadata:
-  name: polar-redis
-  labels:
-    db: polar-redis
-spec:
-  type: ClusterIP
-  selector:
-    db: polar-redis
-  ports:
-  - protocol: TCP
-    port: 6379
-    targetPort: 6379

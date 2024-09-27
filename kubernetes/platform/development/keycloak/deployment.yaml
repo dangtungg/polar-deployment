@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: polar-keycloak
+  labels:
+    app: polar-keycloak
+spec:
+  selector:
+    matchLabels:
+      app: polar-keycloak
+  template:
+    metadata:
+      labels:
+        app: polar-keycloak
+    spec:
+      containers:
+        - name: polar-keycloak
+          image: quay.io/keycloak/keycloak:25.0.5
+          args:
+            - "start-dev"
+            - "--import-realm"
+          ports:
+            - containerPort: 8080
+          env:
+            - name: KEYCLOAK_ADMIN
+              value: admin
+            - name: KEYCLOAK_ADMIN_PASSWORD
+              value: 123456
+          startupProbe:
+            httpGet:
+              path: /realms/master
+              port: 8080
+            failureThreshold: 40
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /realms/master
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 350Mi
+            limits:
+              cpu: 500m
+              memory: 750Mi
+          volumeMounts:
+            - name: polar-keycloak-config-volume
+              mountPath: /opt/keycloak/data/import
+      volumes:
+        - name: polar-keycloak-config-volume
+          configMap:
+            name: polar-keycloak
