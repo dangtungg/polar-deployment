@@ -12,8 +12,10 @@ sleep 15
 
 echo "\n📦 Deploying Keycloak..."
 
-kubectl apply -f services/keycloak-config.yml
-kubectl apply -f services/keycloak.yml
+kubectl apply -f keycloak/configmap.yaml
+kubectl apply -f keycloak/deployment.yaml
+kubectl apply -f keycloak/service.yaml
+kubectl apply -f keycloak/ingress.yaml
 
 sleep 5
 
@@ -30,13 +32,11 @@ kubectl wait \
   --selector=app=polar-keycloak \
   --timeout=300s
 
-echo "\n⌛ Ensuring Keycloak Ingress is created..."
-
-kubectl apply -f services/keycloak.yml
-
 echo "\n📦 Deploying PostgreSQL..."
 
-kubectl apply -f services/postgresql.yml
+kubectl apply -f postgresql/configmap.yaml
+kubectl apply -f postgresql/deployment.yaml
+kubectl apply -f postgresql/service.yaml
 
 sleep 5
 
@@ -55,7 +55,8 @@ kubectl wait \
 
 echo "\n📦 Deploying Redis..."
 
-kubectl apply -f services/redis.yml
+kubectl apply -f redis/deployment.yaml
+kubectl apply -f redis/service.yaml
 
 sleep 5
 
@@ -74,13 +75,16 @@ kubectl wait \
 
 echo "\n📦 Deploying RabbitMQ..."
 
-kubectl apply -f services/rabbitmq.yml
+kubectl apply -f rabbitmq/configmap.yaml
+kubectl apply -f rabbitmq/pvc.yaml
+kubectl apply -f rabbitmq/deployment.yaml
+kubectl apply -f rabbitmq/service.yaml
 
 sleep 5
 
 echo "\n⌛ Waiting for RabbitMQ to be deployed..."
 
-while [ $(kubectl get pod -l db=polar-rabbitmq | wc -l) -eq 0 ] ; do
+while [ $(kubectl get pod -l app=polar-rabbitmq | wc -l) -eq 0 ] ; do
   sleep 5
 done
 
@@ -88,12 +92,13 @@ echo "\n⌛ Waiting for RabbitMQ to be ready..."
 
 kubectl wait \
   --for=condition=ready pod \
-  --selector=db=polar-rabbitmq \
+  --selector=app=polar-rabbitmq \
   --timeout=180s
 
 echo "\n📦 Deploying Polar UI..."
 
-kubectl apply -f services/polar-ui.yml
+kubectl apply -f polar-ui/deployment.yaml
+kubectl apply -f polar-ui/service.yaml
 
 sleep 5
 
