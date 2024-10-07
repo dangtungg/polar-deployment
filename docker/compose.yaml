@@ -54,25 +54,29 @@ services:
 
   edge-service:
     depends_on:
-      - polar-redis
-      - config-service
-      - polar-keycloak
-      - polar-ui
+      polar-redis:
+        condition: service_started
+      config-service:
+        condition: service_started
+      polar-keycloak:
+        condition: service_healthy
+      polar-ui:
+        condition: service_started
     image: "ghcr.io/dangtungg/edge-service"
     container_name: "edge-service"
     ports:
       - 9009:9009
-      - 8000:8000
+      - 8004:8004
     environment:
       # Buildpacks environment variable to enable debug through a socket on port 8000
       - BPL_DEBUG_ENABLED=true
-      - BPL_DEBUG_PORT=8000
+      - BPL_DEBUG_PORT=8004
       - CATALOG_SERVICE_URL=http://catalog-service:9001
       - ORDER_SERVICE_URL=http://order-service:9002
       - SPA_URL=http://polar-ui:9004
       - SPRING_CLOUD_CONFIG_URI=http://config-service:8888
       - SPRING_DATA_REDIS_HOST=polar-redis
-      - SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUER_URI=http://host.docker.internal:8080/realms/PolarBookshop
+      - SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUER_URI=http://polar-keycloak:8080/realms/PolarBookshop
 
   dispatcher-service:
     depends_on:
@@ -110,6 +114,11 @@ services:
     volumes:
       - polar-postgres-vol:/var/lib/postgresql/data
       - ./postgresql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   polar-redis:
     image: redis:latest
@@ -132,14 +141,28 @@ services:
   polar-keycloak:
     image: quay.io/keycloak/keycloak:25.0.5
     container_name: polar-keycloak
-    command: start-dev --import-realm
-    volumes:
-      - ./keycloak:/opt/keycloak/data/import
+    command: start-dev
     environment:
       - KEYCLOAK_ADMIN=admin
       - KEYCLOAK_ADMIN_PASSWORD=123456
+      - KC_DB=postgres
+      - KC_DB_URL=jdbc:postgresql://polar-postgres:5432/keycloak
+      - KC_DB_USERNAME=admin
+      - KC_DB_PASSWORD=123456
     ports:
       - 8080:8080
+    depends_on:
+      polar-postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "exec 3<>/dev/tcp/127.0.0.1/9000;echo -e 'GET /health/ready HTTP/1.1\r\nhost: http://localhost\r\nConnection: close\r\n\r\n' >&3;if [ $? -eq 0 ]; then echo 'Healthcheck Successful';exit 0;else echo 'Healthcheck Failed';exit 1;fi;",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   polar-postgres-vol:
