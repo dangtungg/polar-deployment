@@ -25,7 +25,15 @@ spec:
             - name: KEYCLOAK_ADMIN
               value: admin
             - name: KEYCLOAK_ADMIN_PASSWORD
-              value: 123456
+              value: "123456"
+            - name: KC_DB
+              value: postgres
+            - name: KC_DB_URL
+              value: jdbc:postgresql://polar-postgres:5432/keycloak
+            - name: KC_DB_USERNAME
+              value: admin
+            - name: KC_DB_PASSWORD
+              value: "123456"
           startupProbe:
             httpGet:
               path: /realms/master

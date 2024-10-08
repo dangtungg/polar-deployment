@@ -20,7 +20,7 @@ spec:
             - name: POSTGRES_USER
               value: admin
             - name: POSTGRES_PASSWORD
-              value: '123456'
+              value: "123456"
           resources:
             requests:
               cpu: 100m
@@ -29,9 +29,14 @@ spec:
               cpu: 200m
               memory: 120Mi
           volumeMounts:
-            - mountPath: /docker-entrypoint-initdb.d
-              name: postgres-config-volume
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+            - name: postgres-config-volume
+              mountPath: /docker-entrypoint-initdb.d
       volumes:
+        - name: postgres-data
+          persistentVolumeClaim:
+            claimName: postgres-data
         - name: postgres-config-volume
           configMap:
             name: postgres-config
